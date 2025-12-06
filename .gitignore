@@ -1,0 +1,180 @@
+# ==========================================================
+# GLOBAL IGNORE RULES FOR MULTI-CLOUD DEVOPS PROJECT
+# ==========================================================
+
+# ---------------------------
+# Terraform
+# ---------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+*.tfvars
+secrets.auto.tfvars
+*.backup
+
+# Prevent committing sensitive plan outputs
+terraform.tfplan
+
+# ---------------------------
+# Kubernetes / Helm
+# ---------------------------
+*.kubeconfig
+kubeconfig
+kubeconfig-*
+.kube/
+helm/values-*.yaml
+charts/*/charts/
+charts/*/tmp/
+charts/*/Chart.lock
+
+# ---------------------------
+# Docker
+# ---------------------------
+*.dockerignore
+docker-compose.override.yml
+.docker/
+.docker-cache/
+tmp-docker-build/
+
+# ---------------------------
+# Jenkins CI/CD
+# ---------------------------
+jenkins_home/
+*.log
+*.tmp
+workflow-libs/
+secrets/
+.credentials
+*.jpi
+*.hpi
+
+# ---------------------------
+# GitHub Actions
+# ---------------------------
+.github/secrets/
+.github/workflows/.temp/*
+.github/actions/**/node_modules/
+
+# ---------------------------
+# Cloud Providers Credentials
+# ---------------------------
+# AWS
+.aws/
+*.pem
+*.key
+*credentials*
+aws_temp_credentials.json
+
+# Azure
+.azure/
+az_config
+AzureRmContext.json
+
+# GCP
+.gcloud/
+gcp-key.json
+*.p12
+
+# ---------------------------
+# Logs & temp files
+# ---------------------------
+*.log
+logs/
+log/
+tmp/
+temp/
+*.pid
+*.out
+*.err
+
+# ---------------------------
+# Prometheus / Grafana
+# ---------------------------
+prometheus/data/
+grafana/data/
+grafana/plugins/
+grafana/logs/
+
+# ---------------------------
+# Node.js
+# ---------------------------
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+dist/
+build/
+.env
+.env.*
+
+# ---------------------------
+# Python
+# ---------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+*.egg-info/
+pip-wheel-metadata/
+
+# ---------------------------
+# Go
+# ---------------------------
+bin/
+vendor/
+*.test
+
+# ---------------------------
+# IDE & Editor Files
+# ---------------------------
+.vscode/
+.vscode/*
+.idea/
+*.iml
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# Secrets protection (critical)
+# ---------------------------
+*.secret
+*.secrets
+*.env.secret
+secret.yaml
+secret.yml
+*.encrypted
+config.json
+service-account.json
+vault-token
+*.crt
+*.csr
+
+# ---------------------------
+# Local dev cluster tools
+# ---------------------------
+kind-config.yaml
+minikube/
+.k3d/
+.devcluster/
+
+# ---------------------------
+# Misc
+# ---------------------------
+*.bak
+*.tmp
+*.cache
+*.lock
+coverage/
+coverage.*
