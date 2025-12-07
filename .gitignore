@@ -178,3 +178,7 @@ minikube/
 *.lock
 coverage/
 coverage.*
+
+.terragrunt-cache/
+**/.terragrunt-cache/
+
