@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app: argocd-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-server
+  template:
+    metadata:
+      labels:
+        app: argocd-server
+    spec:
+      containers:
+        - name: argocd-server
+          image: quay.io/argoproj/argocd:v2.11.0   # pick a stable version
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          command: ["argocd-server"]
+          args:
+            - --staticassets
+            - /shared/app
+            - --insecure
+          volumeMounts:
+            - name: argocd-repo-server-tls
+              mountPath: /app/config/tls
+              readOnly: true
+      volumes:
+        - name: argocd-repo-server-tls
+          emptyDir: {}
