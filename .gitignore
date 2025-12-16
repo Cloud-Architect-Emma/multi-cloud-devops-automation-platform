@@ -198,3 +198,22 @@ argocd.exe
 *.tar
 *.tar.gz
 *.exe
+
+
+cat <<EOF > .gitignore
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Ansible secrets
+key.json
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Binaries
+*.exe
+EOF
