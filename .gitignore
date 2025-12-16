@@ -197,3 +197,4 @@ argocd.exe
 *.zip
 *.tar
 *.tar.gz
+*.exe
