@@ -189,3 +189,11 @@ argocd.exe
 argocd.exe
 argocd.exe
 argocd.exe
+
+
+
+# Binaries
+*.exe
+*.zip
+*.tar
+*.tar.gz
