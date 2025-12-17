@@ -1,35 +1,18 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: argocd-server
+  name: multi-cloud-service-aws
   namespace: argocd
-  labels:
-    app: argocd-server
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: argocd-server
-  template:
-    metadata:
-      labels:
-        app: argocd-server
-    spec:
-      containers:
-        - name: argocd-server
-          image: quay.io/argoproj/argocd:v2.11.0   # pick a stable version
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-          command: ["argocd-server"]
-          args:
-            - --staticassets
-            - /shared/app
-            - --insecure
-          volumeMounts:
-            - name: argocd-repo-server-tls
-              mountPath: /app/config/tls
-              readOnly: true
-      volumes:
-        - name: argocd-repo-server-tls
-          emptyDir: {}
+  project: default
+  source:
+    repoURL: https://github.com/Cloud-Architect-Emma/Cloud-Architect-Emma-multi-cloud-devops-automation-platform.git
+    targetRevision: main
+    path: k8s/aws
+  destination:
+    server: https://136.119.132.193
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -4,13 +4,13 @@ metadata:
   name: argocd-server
   namespace: argocd
   labels:
-    app: argocd-server
+    app.kubernetes.io/name: argocd-server
 spec:
-  type: NodePort   # change to LoadBalancer if using cloud provider
+  type: LoadBalancer
   ports:
-    - name: http
-      port: 80
-      targetPort: 8080
-      nodePort: 30080   # optional, for NodePort
+    - name: https
+      port: 443
+      targetPort: 2000
+      protocol: TCP
   selector:
-    app: argocd-server
+    app.kubernetes.io/name: argocd-server
