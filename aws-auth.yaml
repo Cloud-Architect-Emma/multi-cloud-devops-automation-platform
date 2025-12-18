@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::430118830222:role/dev-eks-cluster-20251207234636825800000001
+      username: eks-admin
+      groups:
+        - system:masters
+    - rolearn: arn:aws:iam::430118830222:role/argocd-manager-role
+      username: argocd-manager
+      groups:
+        - system:masters
+  mapUsers: |
+    - userarn: arn:aws:iam::430118830222:user/Emma
+      username: emma
+      groups:
+        - system:masters

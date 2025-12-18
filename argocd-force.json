@@ -1,0 +1,128 @@
+{
+  "kind": "Namespace",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "argocd",
+    "uid": "5fc1fca8-b86c-4997-aa19-9c78a6025935",
+    "resourceVersion": "421349",
+    "creationTimestamp": "2025-12-18T16:55:45Z",
+    "deletionTimestamp": "2025-12-18T17:36:50Z",
+    "labels": {
+      "kubernetes.io/metadata.name": "argocd"
+    },
+    "managedFields": [
+      {
+        "manager": "kubectl-create",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2025-12-18T16:55:45Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:kubernetes.io/metadata.name": {}
+            }
+          }
+        }
+      },
+      {
+        "manager": "kube-controller-manager",
+        "operation": "Update",
+        "apiVersion": "v1",
+        "time": "2025-12-18T17:37:02Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:status": {
+            "f:conditions": {
+              ".": {},
+              "k:{\"type\":\"NamespaceContentRemaining\"}": {
+                ".": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"NamespaceDeletionContentFailure\"}": {
+                ".": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"NamespaceDeletionDiscoveryFailure\"}": {
+                ".": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"NamespaceDeletionGroupVersionParsingFailure\"}": {
+                ".": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
+              },
+              "k:{\"type\":\"NamespaceFinalizersRemaining\"}": {
+                ".": {},
+                "f:lastTransitionTime": {},
+                "f:message": {},
+                "f:reason": {},
+                "f:status": {},
+                "f:type": {}
+              }
+            }
+          }
+        },
+        "subresource": "status"
+      }
+    ]
+  },
+  "spec": {}
+,
+  "status": {
+    "phase": "Terminating",
+    "conditions": [
+      {
+        "type": "NamespaceDeletionDiscoveryFailure",
+        "status": "False",
+        "lastTransitionTime": "2025-12-18T17:36:57Z",
+        "reason": "ResourcesDiscovered",
+        "message": "All resources successfully discovered"
+      },
+      {
+        "type": "NamespaceDeletionGroupVersionParsingFailure",
+        "status": "False",
+        "lastTransitionTime": "2025-12-18T17:36:57Z",
+        "reason": "ParsedGroupVersions",
+        "message": "All legacy kube types successfully parsed"
+      },
+      {
+        "type": "NamespaceDeletionContentFailure",
+        "status": "False",
+        "lastTransitionTime": "2025-12-18T17:36:57Z",
+        "reason": "ContentDeleted",
+        "message": "All content successfully deleted, may be waiting on finalization"
+      },
+      {
+        "type": "NamespaceContentRemaining",
+        "status": "True",
+        "lastTransitionTime": "2025-12-18T17:36:57Z",
+        "reason": "SomeResourcesRemain",
+        "message": "Some resources are remaining: services. has 1 resource instances"
+      },
+      {
+        "type": "NamespaceFinalizersRemaining",
+        "status": "True",
+        "lastTransitionTime": "2025-12-18T17:36:57Z",
+        "reason": "SomeFinalizersRemain",
+        "message": "Some content in the namespace has finalizers remaining: service.kubernetes.io/load-balancer-cleanup in 1 resource instances"
+      }
+    ]
+  }
+}
