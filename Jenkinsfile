@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        label 'linux'   // IMPORTANT: must be a Linux agent or Docker-based Jenkins
-    }
+    agent any
 
     options {
         timestamps()
@@ -17,17 +15,12 @@ pipeline {
             }
         }
 
-        /* =========================
-           AWS – Terraform
-        ========================== */
         stage('AWS Terraform Init & Plan') {
             steps {
                 withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
                     dir('infrastructure-live/aws') {
-                        sh '''
-                          terraform init
-                          terraform plan
-                        '''
+                        bat 'terraform init'
+                        bat 'terraform plan'
                     }
                 }
             }
@@ -35,7 +28,7 @@ pipeline {
 
         stage('Approval') {
             steps {
-                input message: 'Approve Terraform Apply for ALL CLOUDS?', ok: 'Apply'
+                input message: 'Approve Terraform Apply?', ok: 'Apply'
             }
         }
 
@@ -43,48 +36,40 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
                     dir('infrastructure-live/aws') {
-                        sh 'terraform apply --auto-approve'
+                        bat 'terraform apply --auto-approve'
                     }
                 }
             }
         }
 
-        /* =========================
-           Azure – Terraform
-        ========================== */
-        stage('Azure Terraform Init & Apply') {
+        stage('Azure Terraform Apply') {
             steps {
                 withCredentials([
                     file(credentialsId: 'azure-credentials.json', variable: 'AZURE_AUTH')
                 ]) {
                     dir('infrastructure-live/azure') {
-                        sh '''
-                          export ARM_CLIENT_ID=$(jq -r .clientId $AZURE_AUTH)
-                          export ARM_CLIENT_SECRET=$(jq -r .clientSecret $AZURE_AUTH)
-                          export ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId $AZURE_AUTH)
-                          export ARM_TENANT_ID=$(jq -r .tenantId $AZURE_AUTH)
+                        bat '''
+                        for /f "tokens=2 delims=:," %%a in ('findstr clientId %AZURE_AUTH%') do set ARM_CLIENT_ID=%%~a
+                        for /f "tokens=2 delims=:," %%a in ('findstr clientSecret %AZURE_AUTH%') do set ARM_CLIENT_SECRET=%%~a
+                        for /f "tokens=2 delims=:," %%a in ('findstr subscriptionId %AZURE_AUTH%') do set ARM_SUBSCRIPTION_ID=%%~a
+                        for /f "tokens=2 delims=:," %%a in ('findstr tenantId %AZURE_AUTH%') do set ARM_TENANT_ID=%%~a
 
-                          terraform init
-                          terraform apply --auto-approve
+                        terraform init
+                        terraform apply --auto-approve
                         '''
                     }
                 }
             }
         }
 
-        /* =========================
-           GCP – Terraform
-        ========================== */
-        stage('GCP Terraform Init & Apply') {
+        stage('GCP Terraform Apply') {
             steps {
                 withCredentials([
                     file(credentialsId: 'service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')
                 ]) {
                     dir('infrastructure-live/gcp') {
-                        sh '''
-                          terraform init
-                          terraform apply --auto-approve
-                        '''
+                        bat 'terraform init'
+                        bat 'terraform apply --auto-approve'
                     }
                 }
             }
@@ -92,11 +77,11 @@ pipeline {
     }
 
     post {
-        success {
-            echo 'Multi-cloud Terraform deployment completed successfully.'
-        }
         failure {
-            echo 'Pipeline failed. Check logs.'
+            echo 'Pipeline failed'
+        }
+        success {
+            echo 'Multi-cloud deployment successful'
         }
     }
 }
