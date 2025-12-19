@@ -11,14 +11,23 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "emma2323/multi-cloud-app"
+        AWS_REGION = "us-east-1"
+        IMAGE_NAME = "emma2323/multi-cloud-app"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Cloud-Architect-Emma/Cloud-Architect-Emma-multi-cloud-devops-automation-platform.git',
+                        credentialsId: 'a9acd7c0-1c8a-4253-96f4-641ff8efea02'
+                    ]]
+                ])
             }
         }
 
@@ -27,13 +36,10 @@ pipeline {
 
                 stage('AWS Terraform') {
                     steps {
-                        withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
-                            dir('infrastructure-live/aws') {
-                                sh '''
-                                  terraform init
-                                  terraform validate
-                                  terraform plan -out=tfplan
-                                '''
+                        dir('infrastructure-live/aws') {
+                            withAWS(credentials: 'aws-terraform', region: "${AWS_REGION}") {
+                                bat 'terraform init'
+                                bat 'terraform plan'
                             }
                         }
                     }
@@ -41,14 +47,16 @@ pipeline {
 
                 stage('Azure Terraform') {
                     steps {
-                        withCredentials([
-                            file(credentialsId: 'azure-credentials.json', variable: 'AZURE_AUTH_LOCATION')
-                        ]) {
-                            dir('infrastructure-live/azure') {
-                                sh '''
-                                  terraform init
-                                  terraform validate
-                                  terraform plan -out=tfplan
+                        dir('infrastructure-live/azure') {
+                            withCredentials([file(
+                                credentialsId: 'azure-credentials.json',
+                                variable: 'ARM_AUTH_FILE'
+                            )]) {
+                                bat '''
+                                set ARM_USE_MSI=false
+                                set ARM_AUTH_FILE=%ARM_AUTH_FILE%
+                                terraform init
+                                terraform plan
                                 '''
                             }
                         }
@@ -57,15 +65,13 @@ pipeline {
 
                 stage('GCP Terraform') {
                     steps {
-                        withCredentials([
-                            file(credentialsId: 'service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')
-                        ]) {
-                            dir('infrastructure-live/gcp') {
-                                sh '''
-                                  terraform init
-                                  terraform validate
-                                  terraform plan -out=tfplan
-                                '''
+                        dir('infrastructure-live/gcp') {
+                            withCredentials([file(
+                                credentialsId: 'service-account',
+                                variable: 'GOOGLE_APPLICATION_CREDENTIALS'
+                            )]) {
+                                bat 'terraform init'
+                                bat 'terraform plan'
                             }
                         }
                     }
@@ -74,13 +80,14 @@ pipeline {
         }
 
         stage('Terraform Apply') {
+            when { branch 'main' }
             parallel {
 
                 stage('AWS Apply') {
                     steps {
-                        withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
-                            dir('infrastructure-live/aws') {
-                                sh 'terraform apply -auto-approve tfplan'
+                        dir('infrastructure-live/aws') {
+                            withAWS(credentials: 'aws-terraform', region: "${AWS_REGION}") {
+                                bat 'terraform apply -auto-approve'
                             }
                         }
                     }
@@ -88,11 +95,12 @@ pipeline {
 
                 stage('Azure Apply') {
                     steps {
-                        withCredentials([
-                            file(credentialsId: 'azure-credentials.json', variable: 'AZURE_AUTH_LOCATION')
-                        ]) {
-                            dir('infrastructure-live/azure') {
-                                sh 'terraform apply -auto-approve tfplan'
+                        dir('infrastructure-live/azure') {
+                            withCredentials([file(
+                                credentialsId: 'azure-credentials.json',
+                                variable: 'ARM_AUTH_FILE'
+                            )]) {
+                                bat 'terraform apply -auto-approve'
                             }
                         }
                     }
@@ -100,11 +108,12 @@ pipeline {
 
                 stage('GCP Apply') {
                     steps {
-                        withCredentials([
-                            file(credentialsId: 'service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')
-                        ]) {
-                            dir('infrastructure-live/gcp') {
-                                sh 'terraform apply -auto-approve tfplan'
+                        dir('infrastructure-live/gcp') {
+                            withCredentials([file(
+                                credentialsId: 'service-account',
+                                variable: 'GOOGLE_APPLICATION_CREDENTIALS'
+                            )]) {
+                                bat 'terraform apply -auto-approve'
                             }
                         }
                     }
@@ -112,25 +121,30 @@ pipeline {
             }
         }
 
-        stage('Build & Trivy Scan') {
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                  docker build -t $DOCKER_IMAGE:$BUILD_NUMBER .
-                  trivy image --exit-code 1 --severity HIGH,CRITICAL $DOCKER_IMAGE:$BUILD_NUMBER
-                '''
+                dir('app') {
+                    bat 'docker build -t %IMAGE_NAME%:%IMAGE_TAG% .'
+                }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Trivy Scan') {
             steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'dockerhub',
+                bat 'trivy image --severity HIGH,CRITICAL --exit-code 1 %IMAGE_NAME%:%IMAGE_TAG%'
+            }
+        }
+
+        stage('Push Image to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
                     usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS')
-                ]) {
-                    sh '''
-                      echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                      docker push $DOCKER_IMAGE:$BUILD_NUMBER
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat '''
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    docker push %IMAGE_NAME%:%IMAGE_TAG%
                     '''
                 }
             }
@@ -138,14 +152,15 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'sonarQube-token',
+                withCredentials([usernamePassword(
+                    credentialsId: 'sonarQube-token',
                     usernameVariable: 'SONAR_USER',
-                    passwordVariable: 'SONAR_PASS')
-                ]) {
-                    sh '''
-                      sonar-scanner \
-                      -Dsonar.login=$SONAR_PASS
+                    passwordVariable: 'SONAR_PASS'
+                )]) {
+                    bat '''
+                    sonar-scanner ^
+                      -Dsonar.login=%SONAR_USER% ^
+                      -Dsonar.password=%SONAR_PASS%
                     '''
                 }
             }
@@ -153,18 +168,18 @@ pipeline {
 
         stage('Deploy via ArgoCD') {
             steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'AgroCD',
-                    usernameVariable: 'ARGO_USER',
-                    passwordVariable: 'ARGO_PASS')
-                ]) {
-                    sh '''
-                      argocd login argocd.example.com \
-                        --username $ARGO_USER \
-                        --password $ARGO_PASS \
-                        --insecure
+                withCredentials([usernamePassword(
+                    credentialsId: 'AgroCD',
+                    usernameVariable: 'ARGOCD_USERNAME',
+                    passwordVariable: 'ARGOCD_PASSWORD'
+                )]) {
+                    bat '''
+                    argocd login argocd.example.com ^
+                      --username %ARGOCD_USERNAME% ^
+                      --password %ARGOCD_PASSWORD% ^
+                      --insecure
 
-                      argocd app sync multi-cloud-app
+                    argocd app sync multi-cloud-app
                     '''
                 }
             }
@@ -173,7 +188,10 @@ pipeline {
 
     post {
         failure {
-            echo "Pipeline failed — investigate stage logs"
+            echo 'Pipeline failed — ArgoCD rollback recommended'
+        }
+        success {
+            echo 'Pipeline completed successfully'
         }
     }
 }
