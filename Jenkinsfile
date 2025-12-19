@@ -1,46 +1,45 @@
 pipeline {
     agent any
-    environment {
-        // GitHub token for checkout
-        GITHUB_TOKEN = credentials('a9acd7c0-1c8a-4253-96f4-641ff8efea02')
+
+    triggers {
+        githubPush()
     }
+
     options {
         timestamps()
-        skipDefaultCheckout(true)
-        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        ARGOCD_SERVER = 'https://argocd.example.com'
+        DOCKER_IMAGE = "emma2323/multi-cloud-app:${BUILD_NUMBER}"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: 'main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Cloud-Architect-Emma/Cloud-Architect-Emma-multi-cloud-devops-automation-platform.git',
-                        credentialsId: 'a9acd7c0-1c8a-4253-96f4-641ff8efea02'
-                    ]]
-                ])
+                checkout scm
             }
         }
 
         stage('Terraform Init & Plan') {
             parallel {
+
                 stage('AWS Terraform') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([
-                                    string(credentialsId: 'access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                                    string(credentialsId: 'secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                                ]) {
-                                    dir('aws') {
-                                        sh 'terraform init'
-                                        sh 'terraform plan -out=tfplan'
-                                    }
-                                }
-                            } catch (err) {
-                                echo "AWS Terraform branch failed: ${err}"
+                        withCredentials([
+                            string(credentialsId: 'access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                            string(credentialsId: 'secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                        ]) {
+                            dir('infrastructure-live/aws') {
+                                sh '''
+                                  terraform init
+                                  terraform validate
+                                  terraform plan -out=tfplan
+                                '''
                             }
                         }
                     }
@@ -48,21 +47,21 @@ pipeline {
 
                 stage('Azure Terraform') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([file(credentialsId: 'azure-credentials.json', variable: 'AZURE_CREDS')]) {
-                                    dir('azure') {
-                                        sh '''
-                                        az login --service-principal --username $(jq -r .clientId < $AZURE_CREDS) \
-                                        --password $(jq -r .clientSecret < $AZURE_CREDS) \
-                                        --tenant $(jq -r .tenantId < $AZURE_CREDS)
-                                        terraform init
-                                        terraform plan -out=tfplan
-                                        '''
-                                    }
-                                }
-                            } catch (err) {
-                                echo "Azure Terraform branch failed: ${err}"
+                        withCredentials([
+                            file(credentialsId: 'azure-credentials.json', variable: 'AZURE_AUTH')
+                        ]) {
+                            dir('infrastructure-live/azure') {
+                                sh '''
+                                  export ARM_USE_MSI=false
+                                  export ARM_CLIENT_ID=$(jq -r .clientId $AZURE_AUTH)
+                                  export ARM_CLIENT_SECRET=$(jq -r .clientSecret $AZURE_AUTH)
+                                  export ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId $AZURE_AUTH)
+                                  export ARM_TENANT_ID=$(jq -r .tenantId $AZURE_AUTH)
+
+                                  terraform init
+                                  terraform validate
+                                  terraform plan -out=tfplan
+                                '''
                             }
                         }
                     }
@@ -70,17 +69,15 @@ pipeline {
 
                 stage('GCP Terraform') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([file(credentialsId: 'service-account.json', variable: 'GCP_CREDS')]) {
-                                    dir('gcp') {
-                                        sh 'gcloud auth activate-service-account --key-file=$GCP_CREDS'
-                                        sh 'terraform init'
-                                        sh 'terraform plan -out=tfplan'
-                                    }
-                                }
-                            } catch (err) {
-                                echo "GCP Terraform branch failed: ${err}"
+                        withCredentials([
+                            file(credentialsId: 'service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')
+                        ]) {
+                            dir('infrastructure-live/gcp') {
+                                sh '''
+                                  terraform init
+                                  terraform validate
+                                  terraform plan -out=tfplan
+                                '''
                             }
                         }
                     }
@@ -89,114 +86,120 @@ pipeline {
         }
 
         stage('Terraform Apply') {
+            when {
+                branch 'main'
+            }
             parallel {
+
                 stage('AWS Apply') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([
-                                    string(credentialsId: 'access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                                    string(credentialsId: 'secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                                ]) {
-                                    dir('aws') {
-                                        sh 'terraform apply -auto-approve tfplan'
-                                    }
-                                }
-                            } catch (err) {
-                                echo "AWS Apply failed: ${err}"
-                            }
+                        dir('infrastructure-live/aws') {
+                            sh 'terraform apply -auto-approve tfplan'
                         }
                     }
                 }
 
                 stage('Azure Apply') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([file(credentialsId: 'azure-credentials.json', variable: 'AZURE_CREDS')]) {
-                                    dir('azure') {
-                                        sh 'terraform apply -auto-approve tfplan'
-                                    }
-                                }
-                            } catch (err) {
-                                echo "Azure Apply failed: ${err}"
-                            }
+                        dir('infrastructure-live/azure') {
+                            sh 'terraform apply -auto-approve tfplan'
                         }
                     }
                 }
 
                 stage('GCP Apply') {
                     steps {
-                        script {
-                            try {
-                                withCredentials([file(credentialsId: 'service-account.json', variable: 'GCP_CREDS')]) {
-                                    dir('gcp') {
-                                        sh 'terraform apply -auto-approve tfplan'
-                                    }
-                                }
-                            } catch (err) {
-                                echo "GCP Apply failed: ${err}"
-                            }
+                        dir('infrastructure-live/gcp') {
+                            sh 'terraform apply -auto-approve tfplan'
                         }
                     }
                 }
             }
         }
 
-        stage('Build, Scan & Push Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            sh '''
-                            docker build -t emma2323/my-app:latest .
-                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                            docker push emma2323/my-app:latest
-                            '''
-                        }
-                    } catch (err) {
-                        echo "Docker build/push failed: ${err}"
+                    docker.withRegistry('', 'dockerhub') {
+                        sh "docker build -t ${DOCKER_IMAGE} ."
+                        sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh """
+                  trivy image \
+                  --severity CRITICAL,HIGH \
+                  --exit-code 1 \
+                  ${DOCKER_IMAGE}
+                """
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'sonarQube-token', usernameVariable: 'SONAR_USER', passwordVariable: 'SONAR_PASS')]) {
-                            sh 'sonar-scanner -Dsonar.login=$SONAR_PASS'
-                        }
-                    } catch (err) {
-                        echo "SonarQube analysis failed: ${err}"
-                    }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'sonarQube-token',
+                        usernameVariable: 'SONAR_USER',
+                        passwordVariable: 'SONAR_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                      sonar-scanner \
+                      -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Deploy via ArgoCD') {
             steps {
-                script {
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'AgroCD', usernameVariable: 'ARGO_USER', passwordVariable: 'ARGO_PASS')]) {
-                            sh 'argocd login my-argocd-server --username $ARGO_USER --password $ARGO_PASS --insecure'
-                            sh 'argocd app sync my-app'
-                        }
-                    } catch (err) {
-                        echo "ArgoCD deployment failed: ${err}"
-                    }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'AgroCD',
+                        usernameVariable: 'ARGO_USER',
+                        passwordVariable: 'ARGO_PASS'
+                    )
+                ]) {
+                    sh '''
+                      argocd login $ARGOCD_SERVER \
+                        --username $ARGO_USER \
+                        --password $ARGO_PASS \
+                        --insecure
+
+                      for cluster in aws azure gcp; do
+                        argocd app sync app-$cluster --prune
+                      done
+                    '''
                 }
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline finished'
-        }
         failure {
-            echo 'Pipeline failed, check logs for errors'
+            withCredentials([
+                usernamePassword(
+                    credentialsId: 'AgroCD',
+                    usernameVariable: 'ARGO_USER',
+                    passwordVariable: 'ARGO_PASS'
+                )
+            ]) {
+                sh '''
+                  argocd login $ARGOCD_SERVER \
+                    --username $ARGO_USER \
+                    --password $ARGO_PASS \
+                    --insecure
+
+                  for cluster in aws azure gcp; do
+                    argocd app rollback app-$cluster
+                  done
+                '''
+            }
         }
     }
 }
