@@ -1,54 +1,59 @@
 pipeline {
     agent any
-
-    triggers {
-        githubPush()
-    }
-
-    options {
-        timestamps()
-    }
-
-    environment {
-        AWS_REGION = 'us-east-1'
-    }
-
     stages {
-
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', 
+                    credentialsId: 'a9acd7c0-1c8a-4253-96f4-641ff8efea02', 
+                    url: 'https://github.com/Cloud-Architect-Emma/Cloud-Architect-Emma-multi-cloud-devops-automation-platform.git'
             }
         }
 
-        stage('Terraform Init (AWS)') {
+        stage('AWS Terraform Init & Plan') {
             steps {
-                dir('infrastructure-live/aws') {
-                    withAWS(credentials: 'aws-terraform', region: "${AWS_REGION}") {
-                        bat 'terraform --version'
-                        bat 'terraform init'
+                withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
+                    dir('infrastructure-live/aws') {
+                        sh 'terraform init'
+                        sh 'terraform plan'
                     }
                 }
             }
         }
 
-        stage('Terraform Plan (AWS)') {
+        stage('AWS Terraform Apply') {
             steps {
-                dir('infrastructure-live/aws') {
-                    withAWS(credentials: 'aws-terraform', region: "${AWS_REGION}") {
-                        bat 'terraform plan'
+                withAWS(credentials: 'aws-terraform', region: 'us-east-1') {
+                    dir('infrastructure-live/aws') {
+                        sh 'terraform apply --auto-approve'
                     }
                 }
             }
         }
-    }
 
-    post {
-        success {
-            echo 'AWS Terraform pipeline completed successfully'
+        stage('Azure Terraform Init & Apply') {
+            steps {
+                withCredentials([
+                    file(credentialsId: 'azure-credentials.json', variable: 'AZURE_CRED_FILE')
+                ]) {
+                    dir('infrastructure-live/azure') {
+                        sh 'terraform init'
+                        sh 'terraform apply --auto-approve'
+                    }
+                }
+            }
         }
-        failure {
-            echo 'AWS Terraform pipeline failed'
+
+        stage('GCP Terraform Init & Apply') {
+            steps {
+                withCredentials([
+                    file(credentialsId: 'service-account', variable: 'GOOGLE_CREDENTIALS')
+                ]) {
+                    dir('infrastructure-live/gcp') {
+                        sh 'terraform init'
+                        sh 'terraform apply --auto-approve'
+                    }
+                }
+            }
         }
     }
 }
