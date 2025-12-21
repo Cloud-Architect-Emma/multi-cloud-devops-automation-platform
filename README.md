@@ -73,7 +73,7 @@ Prometheus for metrics
 
 # High‑Level Architecture Diagram
 
-![Architecture Diagram](architecture-img/architecture-img.mp4)
+![Architecture Diagram](architecture-img/architecture-img.png)
 
 # Pipeline Breakdown
 1. Build Stage
@@ -121,7 +121,7 @@ OpenTelemetry traces/logs
 Automated rollback on failed health checks
 
 # Infrastructure Structure (Terragrunt)
-![Infrastructure Structure](Infrastructure Structure/infras-img.PNG)
+![Infrastructure Structure](Infrastructure-Structure/infras-img.PNG)
 Each environment inherits from a shared Terragrunt module, ensuring DRY, reusable, and consistent infrastructure across all clouds.
 
 # Technologies Used
