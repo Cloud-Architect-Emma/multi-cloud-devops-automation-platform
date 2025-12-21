@@ -182,6 +182,9 @@ This project demonstrates:
 
 It is designed to showcase architectural thinking, hands‑on engineering, and DevOps leadership.
 
+# GitOps with Argo CD Screenshot
+![GitOps Screenshot](GitOps-img/OIDC%20App.gif)
+
 # How to Use This Repository
 - Clone the repo
 
@@ -204,6 +207,8 @@ View metrics and dashboards in Grafana
 - Multi‑cluster federation
 
 - Cost monitoring dashboards
+
+**See project screenshot folder for more imgs**
 
 # Author
 Emmanuela Opurum Cloud Solutions Architect & DevOps Engineer Multi‑cloud automation • CI/CD • Kubernetes • Terraform • Terragrunt
