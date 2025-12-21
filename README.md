@@ -73,7 +73,7 @@ Prometheus for metrics
 
 # High‑Level Architecture Diagram
 
-![Architecture Diagram](architecture-img/architecture-img.png)
+![Architecture Diagram](architecture-img/architecture-img.gif)
 
 # Pipeline Breakdown
 1. Build Stage
@@ -121,7 +121,10 @@ OpenTelemetry traces/logs
 Automated rollback on failed health checks
 
 # Infrastructure Structure (Terragrunt)
+
 ![Infrastructure Structure](Infrastructure-Structure/infras-img.PNG)
+
+
 Each environment inherits from a shared Terragrunt module, ensuring DRY, reusable, and consistent infrastructure across all clouds.
 
 # Technologies Used
@@ -183,7 +186,9 @@ This project demonstrates:
 It is designed to showcase architectural thinking, hands‑on engineering, and DevOps leadership.
 
 # GitOps with Argo CD Screenshot
+
 ![GitOps Screenshot](GitOps-img/GitOps-img.PNG)
+
 
 # How to Use This Repository
 - Clone the repo
